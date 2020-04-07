@@ -20,21 +20,75 @@ Today's class will be based on [Chapter 12: "Multiple Regression"](https://david
 
 **Prompt:** Recall the three common steps of exploring a new dataset: 1) looking at the raw data, 2) computing summary statistics, and 3) creating visualizations of the data. Start this process. Useful commands to use here: `glimpse()`,`sample_n`, and `skim` (from the skimr package). What observations are surprising? (Hints: Look at extremes, especially for the key variable you are interested in. Hint at the data for the schools you know.)  
 
+```{r}
+glimpse(x)
+```
+```{r}
+skim(x)
+```
+
+```{r}
+rep_sample_n(x, 5)
+```
+
+
+
 ### Scene 2
 
 **Prompt:** What's the correlation between the average faculty salary in 2001 and the median income of students 10 years after entering? What's the correlation between the average SAT scores in 2001 and the median income of students 10 years after entering? Find these by doing two separate correlations first, and then making a correlation matrix (instructions in the book). 
+
+```{r}
+x %>%
+  summarize(correlation = cor(earnings, faculty))
+
+x %>%
+  summarize(correlation = cor(sat, earnings))
+
+x %>%
+  select(earnings, faculty, sat) %>%
+  cor()
+```
 
 
 ### Scene 3
 
 **Prompt:** Visualize the relationships between the outcome variable (`earnings`) and the two key numerical explanatory variables (`faculty` and `sat`), one at a time. Create a ggplot for each showing the line of best fit.
 
+```{r}
+scatter_faculty <- x %>%
+  ggplot(aes(x = faculty, y = earnings)) + 
+  geom_point() +
+  geom_smooth(method = "glm",se = FALSE)
+
+scatter_sat <- x %>%
+  ggplot(aes(x = sat, y = earnings)) + 
+  geom_point() +
+  geom_smooth(method = "glm",se = FALSE)
+
+scatter_faculty
+scatter_sat
+```
+
 
 ### Scene 4
 
 **Prompt:** Now let's quantify these relationships between the two explanatory variables and the outcome variable. Fit a multiple regression model for `earnings` using `sat` and `faculty` as the explanatory variables. Write a bullet point interpreting each of the three values in the estimate column. Do not use any interaction terms in the regression (yet).
 
+```{r}
+model <- lm(earnings ~ sat + faculty, data = x)
 
+model %>%
+  tidy(conf.int = TRUE) %>%
+  select(term, estimate, conf.low, conf.high)
+```
+Intercept estimate does not have a meaningful interpretation, since there is no value within the dataframe range where sat = 0 and faculty = 0. Additionally, a negative value for earnings does not make sense (unless they were paying money to their employer!)
+
+The intercept is used to situatie the regression plane in 3D space.
+
+Holding all else constant, for every point increase in SAT score, the student earnings increase by $24.48 on average 10 years out.
+
+Holding all else constant, for every $ increase in Faculty earnings, the student earnings increase by $0.39 on average 10 years out.
+ 
 ### Scene 5
 
 **Prompt:** Give a quick tour of your final project to the other students in your group. We will spend 10 minutes on this. Each student should, therefore, spend about N/10 minutes presenting. No worries if your project is a mess! No worries if the Shiny app does not work! We just want to have some useful conversations. Start with a quick one minute overview of your project. Then perhaps show one key plot or table which you have already created. I reserve the right to cold call a student and have her explain a classmate's project.
@@ -44,16 +98,35 @@ Today's class will be based on [Chapter 12: "Multiple Regression"](https://david
 
 **Prompt:** Imagine that you are the university president. There's a global pandemic that is causing serious financial damage to the school endowment, and in response, you want to cut the financial aid budget. However, because many academically talented students will go to whichever school gives them the best financial aid package, slashing the financial aid budget will cause the average SAT score to decrease from 1400 to 1300. Apply the Rubin Causal Model to frame the causal effect of this policy change on the median earnings of students 10 years from now. Write down the units, the treatments, and the outcomes. Define the causal effect of the policy change on median earnings. What is the fundamental problem of causal inference? What must you assume for this causal model to make a causal claim?
 
+Units: Institute of Higher Ed
+Treatments: Decreasing the SAT score
+Outcomes: Median earnings 10 years from now
+
+The causal effect of of the policy change is what the earning will be for students.
+The fundaental problem of causal inference is that we would not be able to observe the counterfactual.
+
+We need to assume that there are no other confounders that would influence earnings (ie reputation, name recognition)
 
 ### Scene 7
 
 **Prompt:** Recall the model we made in Scene 4. Use that model to make a prediction. Consider a school with average faculty salary of $50,000 and average SAT of 1200. What would the school's median earnings be 10 years from now? Although there are fancier ways of doing this in R --- check out the `predict()` function --- you should use the simple approach of using the regression estimates and then plugging in the appropriate values.
+
+```{r}
+predict(model, faculty = 50000, sat = 1200) %>%
+  median()
+```
 
 
 ### Scene 8
 
 **Prompt:** Now that we have our regression model using two numerical explanatory variables, let's find the fitted values and residuals for the model using `augment()`. What do the fitted values and residuals mean, in terms of where they appear in a fitted line graph? Take a look at the biggest residuals, both positive and negative. What causes them? What is the model missing? How might we improve the model?
 
+```{r}
+model %>%
+  augment() %>%
+  ggplot(aes(y = .resid)) +
+  geom_boxplot()
+```
 
 
 ### Scene 9
